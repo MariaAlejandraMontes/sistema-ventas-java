@@ -1,0 +1,229 @@
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
+
+class Producto {
+    private String productoId;
+    private String nombre;
+    private double precio;
+    private int stock;
+    private int vendidos;
+    private String descripcion;
+
+    public Producto(String productoId, String nombre, double precio, int stock, String descripcion) {
+        this.productoId = productoId;
+        this.nombre = nombre;
+        this.precio = precio;
+        this.stock = stock;
+        this.vendidos = 0;
+        this.descripcion = descripcion;
+    }
+
+    // Getters y Setters
+    public String getProductoId() { return productoId; }
+    public void setProductoId(String productoId) { this.productoId = productoId; }
+
+    public String getNombre() { return nombre; }
+    public void setNombre(String nombre) { this.nombre = nombre; }
+
+    public double getPrecio() { return precio; }
+    public void setPrecio(double precio) { this.precio = precio; }
+
+    public int getStock() { return stock; }
+    public void setStock(int stock) { this.stock = stock; }
+
+    public int getVendidos() { return vendidos; }
+    public void setVendidos(int vendidos) { this.vendidos = vendidos; }
+
+    public String getDescripcion() { return descripcion; }
+    public void setDescripcion(String descripcion) { this.descripcion = descripcion; }
+
+    @Override
+    public String toString() {
+        return "ID: " + productoId + ", Nombre: " + nombre + ", Precio: $" + precio + " COP, Stock: " + stock + ", Vendidos: " + vendidos +
+                "\nDescripción: " + descripcion;
+    }
+}
+
+class Venta {
+    private String ventaId;
+    private String productoId;
+    private int cantidad;
+    private LocalDateTime fecha;
+
+    public Venta(String ventaId, String productoId, int cantidad) {
+        this.ventaId = ventaId;
+        this.productoId = productoId;
+        this.cantidad = cantidad;
+        this.fecha = LocalDateTime.now();
+    }
+
+    // Getters y Setters
+    public String getVentaId() { return ventaId; }
+    public void setVentaId(String ventaId) { this.ventaId = ventaId; }
+
+    public String getProductoId() { return productoId; }
+    public void setProductoId(String productoId) { this.productoId = productoId; }
+
+    public int getCantidad() { return cantidad; }
+    public void setCantidad(int cantidad) { this.cantidad = cantidad; }
+
+    public LocalDateTime getFecha() { return fecha; }
+    public void setFecha(LocalDateTime fecha) { this.fecha = fecha; }
+
+    @Override
+    public String toString() {
+        return "Venta[" + ventaId + "] ProductoID: " + productoId + ", Cantidad: " + cantidad + ", Fecha: " + fecha;
+    }
+}
+
+class Inventario {
+    private List<Producto> productos = new ArrayList<>();
+
+    public void agregarProducto(Producto producto) {
+        productos.add(producto);
+    }
+
+    public void actualizarProducto(String productoId, double nuevoPrecio, int nuevoStock, String nuevaDescripcion) {
+        productos.stream()
+                .filter(p -> p.getProductoId().equals(productoId))
+                .findFirst()
+                .ifPresent(p -> {
+                    p.setPrecio(nuevoPrecio);
+                    p.setStock(nuevoStock);
+                    p.setDescripcion(nuevaDescripcion);
+                });
+    }
+
+    public Optional<Producto> buscarProducto(String productoId) {
+        return productos.stream().filter(p -> p.getProductoId().equals(productoId)).findFirst();
+    }
+
+    public List<Producto> getProductos() {
+        return productos;
+    }
+
+    public List<Producto> productosSinStock() {
+        return productos.stream().filter(p -> p.getStock() == 0).collect(Collectors.toList());
+    }
+}
+
+class GestorVentas {
+    private List<Venta> ventas = new ArrayList<>();
+
+    public void registrarVenta(String ventaId, Producto producto, int cantidad) {
+        if (producto.getStock() >= cantidad) {
+            producto.setStock(producto.getStock() - cantidad);
+            producto.setVendidos(producto.getVendidos() + cantidad);
+            ventas.add(new Venta(ventaId, producto.getProductoId(), cantidad));
+        } else {
+            System.out.println("Stock insuficiente para " + producto.getNombre());
+        }
+    }
+
+    public double valorTotalVentas(Inventario inventario) {
+        return ventas.stream()
+                .mapToDouble(v -> inventario.buscarProducto(v.getProductoId())
+                        .map(p -> p.getPrecio() * v.getCantidad()).orElse(0.0))
+                .sum();
+    }
+
+    public double promedioVentasPorPeriodo(long divisor) {
+        return divisor > 0 ? (double) ventas.size() / divisor : 0;
+    }
+
+    public Optional<Producto> productoMasVendido(Inventario inventario) {
+        return inventario.getProductos().stream().max(Comparator.comparingInt(Producto::getVendidos));
+    }
+
+    public Optional<Producto> productoMenosVendido(Inventario inventario) {
+        return inventario.getProductos().stream().min(Comparator.comparingInt(Producto::getVendidos));
+    }
+
+    public List<Venta> getVentas() {
+        return ventas;
+    }
+}
+
+public class Main {
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        Inventario inventario = new Inventario();
+        GestorVentas gestorVentas = new GestorVentas();
+
+        // Productos iniciales
+        inventario.agregarProducto(new Producto("001", "Labial", 45000, 10, "Labial mate de larga duración"));
+        inventario.agregarProducto(new Producto("002", "Rubor", 38000, 8, "Rubor en polvo compacto"));
+        inventario.agregarProducto(new Producto("003", "Polvo", 52000, 5, "Polvo compacto con acabado natural"));
+        inventario.agregarProducto(new Producto("004", "Perfume", 120000, 3, "Perfume Rosé, aroma floral"));
+
+        int opcion;
+        do {
+            System.out.println("\n===== MENÚ =====");
+            System.out.println("1. Registrar venta");
+            System.out.println("2. Consultar productos");
+            System.out.println("3. Consultar ventas");
+            System.out.println("4. Mostrar valor total de ventas");
+            System.out.println("5. Mostrar producto más y menos vendido");
+            System.out.println("6. Mostrar productos sin stock");
+            System.out.println("7. Actualizar producto");
+            System.out.println("8. Salir");
+            System.out.print("Seleccione una opción: ");
+            opcion = sc.nextInt();
+
+            switch (opcion) {
+                case 1:
+                    System.out.print("Ingrese ID de venta: ");
+                    String ventaId = sc.next();
+                    System.out.print("Ingrese ID del producto: ");
+                    String prodId = sc.next();
+                    System.out.print("Ingrese cantidad: ");
+                    int cantidad = sc.nextInt();
+                    inventario.buscarProducto(prodId).ifPresentOrElse(
+                            p -> gestorVentas.registrarVenta(ventaId, p, cantidad),
+                            () -> System.out.println("Producto no encontrado")
+                    );
+                    break;
+
+                case 2:
+                    inventario.getProductos().forEach(System.out::println);
+                    break;
+
+                case 3:
+                    gestorVentas.getVentas().forEach(System.out::println);
+                    break;
+
+                case 4:
+                    System.out.println("Valor total ventas: $" + gestorVentas.valorTotalVentas(inventario) + " COP");
+                    break;
+
+                case 5:
+                    gestorVentas.productoMasVendido(inventario).ifPresent(p ->
+                            System.out.println("Más vendido: " + p.getNombre() + " - $" + p.getPrecio()));
+                    gestorVentas.productoMenosVendido(inventario).ifPresent(p ->
+                            System.out.println("Menos vendido: " + p.getNombre() + " - $" + p.getPrecio()));
+                    break;
+
+                case 6:
+                    inventario.productosSinStock().forEach(p ->
+                            System.out.println("Sin stock: " + p.getNombre() + " (Cantidad: " + p.getStock() + ")"));
+                    break;
+
+                case 7:
+                    System.out.print("Ingrese ID del producto a actualizar: ");
+                    String idUpdate = sc.next();
+                    System.out.print("Nuevo precio: ");
+                    double precio = sc.nextDouble();
+                    System.out.print("Nuevo stock: ");
+                    int stock = sc.nextInt();
+                    sc.nextLine();
+                    System.out.print("Nueva descripción: ");
+                    String descripcion = sc.nextLine();
+                    inventario.actualizarProducto(idUpdate, precio, stock, descripcion);
+                    break;
+            }
+        } while (opcion != 8);
+
+        sc.close();
+    }
+}
